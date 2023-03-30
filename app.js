@@ -3,6 +3,7 @@ const cors = require("cors");
 const bodyParser = require("body-parser");
 const bcrypt = require("bcryptjs");
 const sqlite3 = require("sqlite3").verbose();
+const jwt = require("jsonwebtoken");
 
 const app = express();
 
@@ -10,6 +11,25 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
+
+const jwtSecret = "secret-key"; // Change this to a more secure key
+const authenticateJWT = (req, res, next) => {
+    const authHeader = req.headers.authorization;
+
+    if (authHeader) {
+        const token = authHeader.split(" ")[1];
+
+        jwt.verify(token, jwtSecret, (err, user) => {
+            if (err) {
+                return res.sendStatus(403);
+            }
+            req.user = user;
+            next();
+        });
+    } else {
+        res.sendStatus(401);
+    }
+};
 
 const db = new sqlite3.Database("./users.db", (err) => {
     if (err) {
@@ -77,7 +97,10 @@ app.post("/login", async (req, res) => {
         const { username, password } = req.body;
         const user = await loginUser(username, password);
         if (user) {
-            res.status(200).json({ message: "Login successful", user });
+            const token = jwt.sign({ username: user.username }, jwtSecret, {
+                expiresIn: "1h",
+            });
+            res.status(200).json({ message: "Login successful", user, token });
         } else {
             res.status(401).json({ message: "Invalid credentials" });
         }
@@ -85,6 +108,58 @@ app.post("/login", async (req, res) => {
         res.status(400).json({ message: "Error logging in" });
     }
 });
+
+app.get("/hub", async (req, res) => {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        res.status(401).json({ message: "Authorization header is missing" });
+        return;
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    try {
+        const decodedToken = jwt.verify(token, jwtSecret);
+        // You can use decodedToken.username to get the username from the JWT
+        // Perform any data fetching or processing you need for the user's hub page here
+        res.status(200).json({ message: "Welcome to your hub", username: decodedToken.username });
+    } catch (error) {
+        res.status(401).json({ message: "Invalid token" });
+    }
+});
+
+// app.get("/hub", async (req, res) => {
+//     const authHeader = req.headers.authorization;
+//
+//     if (!authHeader) {
+//         res.status(401).json({ message: "Authorization header is missing" });
+//         return;
+//     }
+//
+//     const token = authHeader.split(" ")[1];
+//
+//     try {
+//         const decodedToken = jwt.verify(token, jwtSecret);
+//         const username = decodedToken.username;
+//
+//         // Perform any data fetching or processing you need for the user's hub page here
+//         // Example: Fetch user-specific data from the database
+//         db.get("SELECT * FROM user_data WHERE username = ?", [username], (err, userData) => {
+//             if (err) {
+//                 res.status(500).json({ message: "Error fetching user data" });
+//                 return;
+//             }
+//
+//             // Send the user data in the response
+//             res.status(200).json({ message: "Welcome to your hub", username, userData });
+//         });
+//     } catch (error) {
+//         res.status(401).json({ message: "Invalid token" });
+//     }
+// });
+
+
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
