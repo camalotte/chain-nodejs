@@ -11,16 +11,15 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
-// const users = new Map();
-
-const db = new sqlite3.Database(":memory:", (err) => {
+const db = new sqlite3.Database("./users.db", (err) => {
     if (err) {
         console.error(err.message);
     }
-    console.log("Connected to the in-memory SQLite database.");
+    console.log("Connected to the SQLite database.");
 });
+
 db.run(
-    `CREATE TABLE users (
+    `CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL
@@ -62,7 +61,7 @@ app.post("/register", async (req, res) => {
     db.run(
         "INSERT INTO users (username, password) VALUES (?, ?)",
         [username, hashedPassword],
-        (err) => {
+        function (err) {
             if (err) {
                 res.status(409).json({ message: "Username already exists" });
                 return;
@@ -86,7 +85,6 @@ app.post("/login", async (req, res) => {
         res.status(400).json({ message: "Error logging in" });
     }
 });
-
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
