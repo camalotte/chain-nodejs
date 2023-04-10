@@ -91,7 +91,6 @@ app.post("/register", async (req, res) => {
         }
     );
 });
-
 app.post("/login", async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -108,7 +107,6 @@ app.post("/login", async (req, res) => {
         res.status(400).json({ message: "Error logging in" });
     }
 });
-
 app.get("/hub", async (req, res) => {
     const authHeader = req.headers.authorization;
 
@@ -123,45 +121,64 @@ app.get("/hub", async (req, res) => {
         const decodedToken = jwt.verify(token, jwtSecret);
         // You can use decodedToken.username to get the username from the JWT
         // Perform any data fetching or processing you need for the user's hub page here
-        res.status(200).json({ message: "Welcome to your hub", username: decodedToken.username });
+        res.status(200).json({ message: "Lets get discovering", username: decodedToken.username });
     } catch (error) {
         res.status(401).json({ message: "Invalid token" });
     }
 });
 
-// app.get("/hub", async (req, res) => {
-//     const authHeader = req.headers.authorization;
-//
-//     if (!authHeader) {
-//         res.status(401).json({ message: "Authorization header is missing" });
-//         return;
-//     }
-//
-//     const token = authHeader.split(" ")[1];
-//
-//     try {
-//         const decodedToken = jwt.verify(token, jwtSecret);
-//         const username = decodedToken.username;
-//
-//         // Perform any data fetching or processing you need for the user's hub page here
-//         // Example: Fetch user-specific data from the database
-//         db.get("SELECT * FROM user_data WHERE username = ?", [username], (err, userData) => {
-//             if (err) {
-//                 res.status(500).json({ message: "Error fetching user data" });
-//                 return;
-//             }
-//
-//             // Send the user data in the response
-//             res.status(200).json({ message: "Welcome to your hub", username, userData });
-//         });
-//     } catch (error) {
-//         res.status(401).json({ message: "Invalid token" });
-//     }
-// });
-
-
-
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
+});
+const searchUsers = (query) => {
+    return new Promise((resolve, reject) => {
+        db.all(
+            "SELECT username FROM users WHERE username LIKE ?",
+            [`%${query}%`],
+            (err, rows) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            }
+        );
+    });
+};
+app.get("/search", async (req, res) => {
+    const { query } = req.query;
+
+    if (!query) {
+        res.status(400).json({ message: "Search query is missing" });
+        return;
+    }
+
+    try {
+        const users = await searchUsers(query);
+        res.status(200).json(users);
+    } catch (error) {
+        res.status(500).json({ message: "Error searching for users" });
+    }
+});
+app.get("/chats", authenticateJWT, async (req, res) => {
+    const { user } = req.query;
+
+    if (!user) {
+        res.status(400).json({ message: "User parameter is missing" });
+        return;
+    }
+    // ...
+    try {
+        // Replace the following with the actual logic to fetch chats for the user
+        const chats = [
+            `Chat with ${user} 1`,
+            `Chat with ${user} 2`,
+            `Chat with ${user} 3`,
+        ];
+
+        res.status(200).json({ chats });
+    } catch (error) {
+        res.status(500).json({ message: "Error fetching chats for user" });
+    }
 });
