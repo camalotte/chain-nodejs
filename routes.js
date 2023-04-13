@@ -54,7 +54,6 @@ const loginUser = async (username, password) => {
         });
     });
 };
-
 const setupRoutes = (app) => {
     app.post("/register", async (req, res) => {
         const {username, password} = req.body;
@@ -107,7 +106,7 @@ const setupRoutes = (app) => {
             const decodedToken = jwt.verify(token, jwtSecret);
             // You can use decodedToken.username to get the username from the JWT
             // Perform any data fetching or processing you need for the user's hub page here
-            res.status(200).json({message: "Lets get discovering", username: decodedToken.username});
+            res.status(200).json();
         } catch (error) {
             res.status(401).json({message: "Invalid token"});
         }
@@ -130,59 +129,33 @@ const setupRoutes = (app) => {
         }
     });
 
-    app.get("/chats", authenticateJWT, async (req, res) => {
-        const {user} = req.query;
+    app.post("/add-contact", authenticateJWT, async (req, res) => {
+        const { contactUsername } = req.body;
+        const currentUsername = req.user.username;
 
-        if (!user) {
-            res.status(400).json({message: "User parameter is missing"});
-            return;
-        }
-        // ...
         try {
-            // Replace the following with the actual logic to fetch chats for the user
-            const chats = [
-                `Chat with ${user} 1`,
-                `Chat with ${user} 2`,
-                `Chat with ${user} 3`,
-            ];
+            // Check if the contact already exists
+            const existingContact = await Contact.findOne({ username: currentUsername, contactUsername });
+            if (existingContact) {
+                res.status(400).json({ message: "Contact already exists" });
+                return;
+            }
 
-            res.status(200).json({chats});
+            // Add the contact to the database
+            const newContact = new Contact({
+                username: currentUsername,
+                contactUsername,
+            });
+            await newContact.save();
+
+            // Return a success message
+            res.status(200).json({ message: "Contact added successfully" });
         } catch (error) {
-            res.status(500).json({message: "Error fetching chats for user"});
+            console.error("Error adding contact:", error); // Add this line for error logging
+            res.status(500).json({ message: "Error adding contact" });
         }
     });
 
-// Save a message
-    app.post("/messages", async (req, res) => {
-        const {sender, receiver, content, timestamp} = req.body;
 
-        try {
-            await db.run("INSERT INTO messages (sender, receiver, content, timestamp) VALUES (?, ?, ?, ?)", [
-                sender,
-                receiver,
-                content,
-                timestamp,
-            ]);
-            res.status(201).send({sender, receiver, content, timestamp});
-        } catch (error) {
-            res.status(500).send(error);
-        }
-    });
-
-// Fetch messages between two users
-    app.get("/messages", async (req, res) => {
-        const {user1, user2} = req.query;
-
-        try {
-            const messages = await db.all(
-                "SELECT * FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY timestamp ASC",
-                [user1, user2, user2, user1]
-            );
-            res.status(200).send(messages);
-        } catch (error) {
-            res.status(500).send(error);
-        }
-    });
 };
-
 module.exports = setupRoutes;

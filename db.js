@@ -20,19 +20,6 @@ db.run(
     }
 );
 
-db.run(
-    `CREATE TABLE IF NOT EXISTS messages (
-    id INTEGER PRIMARY KEY,
-    sender TEXT NOT NULL,
-    receiver TEXT NOT NULL,
-    content TEXT NOT NULL,
-    timestamp TEXT NOT NULL
-  )`,
-    (err) => {
-        if (err) {
-            console.error(err.message);
-        }
-    }
-);
+
 
 module.exports = db;

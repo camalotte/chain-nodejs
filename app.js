@@ -1,11 +1,18 @@
 const express = require("express");
 const cors = require("cors");
-const bodyParser = require("body-parser");
-
-const db = require("./db");
-const setupRoutes = require("./routes");
-
 const app = express();
+const bodyParser = require("body-parser");
+const setupRoutes = require("./routes");
+const http = require("http");
+const server = http.createServer(app);
+const configureSocket = require("./socket");
+const db = require("./db");     //WARNING: Unused constant db
+const io = configureSocket(server, {    //WARNING: Unused constant io
+    cors: {
+        origin: "*", // Replace with the actual origin (e.g. http://localhost:3000)
+        methods: ["GET", "POST"],
+    },
+});
 
 app.use(cors());
 app.use(bodyParser.json());
@@ -14,16 +21,6 @@ app.use(express.json());
 
 // Set up the routes
 setupRoutes(app);
-
-const http = require("http");
-const socketIO = require("socket.io");
-const server = http.createServer(app);
-const io = socketIO(server, {
-    cors: {
-        origin: "*", // Replace with the actual origin (e.g. http://localhost:3000)
-        methods: ["GET", "POST"],
-    },
-});
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
