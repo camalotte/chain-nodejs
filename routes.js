@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const db = require("./db");
+const { db } = require('./db');
+const { addContact, getContactsPromise } = require("./db");
 
 const jwtSecret = "secret-key"; // Change this to a more secure key
 const searchUsers = (query) => {
@@ -75,6 +76,7 @@ const setupRoutes = (app) => {
             }
         );
     });
+
     app.post("/login", async (req, res) => {
         try {
             const {username, password} = req.body;
@@ -130,31 +132,56 @@ const setupRoutes = (app) => {
     });
 
     app.post("/add-contact", authenticateJWT, async (req, res) => {
-        const { contactUsername } = req.body;
+        // Get the current user's username from the JWT payload
         const currentUsername = req.user.username;
 
+        // Get the contact's username from the request body
+        const contactUsername = req.body.contactUsername;
+
+        if (!contactUsername) {
+            res.status(400).json({ message: "Contact username is missing" });
+            return;
+        }
+
+        // Check if the contact is already in the current user's contact list
         try {
-            // Check if the contact already exists
-            const existingContact = await Contact.findOne({ username: currentUsername, contactUsername });
-            if (existingContact) {
-                res.status(400).json({ message: "Contact already exists" });
+            const existingContacts = await getContactsPromise(currentUsername);
+            const contactExists = existingContacts.some(
+                (contact) => contact.contact_username === contactUsername
+            );
+
+            if (contactExists) {
+                res.status(409).json({ message: "Contact already exists" });
                 return;
             }
-
-            // Add the contact to the database
-            const newContact = new Contact({
-                username: currentUsername,
-                contactUsername,
-            });
-            await newContact.save();
-
-            // Return a success message
-            res.status(200).json({ message: "Contact added successfully" });
         } catch (error) {
-            console.error("Error adding contact:", error); // Add this line for error logging
+            console.error("Error checking for existing contacts:", error);
+            res.status(500).json({ message: "Error checking for existing contacts" });
+            return;
+        }
+
+        // Add the contact to the current user's contact list
+        try {
+            await addContact(currentUsername, contactUsername);
+            res.status(201).json({ message: "Contact added successfully" });
+        } catch (error) {
+            console.error("Error adding contact:", error);
             res.status(500).json({ message: "Error adding contact" });
         }
     });
+
+    app.get("/contacts", authenticateJWT, async (req, res) => {
+        const currentUsername = req.user.username;
+
+        try {
+            const contacts = await getContactsPromise(currentUsername);
+            res.status(200).json(contacts);
+        } catch (error) {
+            console.error("Error fetching contacts:", error);
+            res.status(500).json({ message: "Error fetching contacts" });
+        }
+    });
+
 
 
 };
