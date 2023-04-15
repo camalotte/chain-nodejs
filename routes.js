@@ -2,6 +2,8 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { db } = require('./db');
 const { addContact, getContactsPromise } = require("./db");
+const { getChatHistory } = require("./db");
+const { sendMessage } = require("./db");
 
 const jwtSecret = "secret-key"; // Change this to a more secure key
 const searchUsers = (query) => {
@@ -182,6 +184,51 @@ const setupRoutes = (app) => {
         }
     });
 
+    // Add this code to your existing routes in the routes.js file
+    app.get("/chat-history/:contactUsername", authenticateJWT, async (req, res) => {
+        try {
+            // Get the current user's username from the JWT payload
+            const currentUsername = req.user.username;
+            // Get the contact's username from the request params
+            const contactUsername = req.params.contactUsername;
+            // Fetch the chat history between the current user and the contact
+            const chatHistory = await getChatHistory(currentUsername, contactUsername);
+            // Return the chat history as a JSON array
+            res.status(200).json(chatHistory);
+        } catch (error) {
+            console.error("Error fetching chat history:", error);
+            res.status(500).json({ message: "Error fetching chat history" });
+        }
+    });
+
+    app.post("/send-message/:contactUsername", authenticateJWT, async (req, res) => {
+        try {
+            // Get the current user's username from the JWT payload
+            const currentUsername = req.user.username;
+            // Get the contact's username from the request params
+            const { contactUsername } = req.params;
+            // Get the message content from the request body
+            const { messageContent } = req.body;
+
+            // Insert the new message into the messages table
+            const messageId = await sendMessage(currentUsername, contactUsername, messageContent);
+            // Emit a real-time event to notify the receiver about the new message
+            if (userSockets[contactUsername]) {
+                userSockets[contactUsername].emit("new-message", {
+                    messageId,
+                    sender: currentUsername,
+                    content: messageContent,
+                    timestamp: new Date().toISOString(),
+                });
+            }
+
+            // Return the message ID in the response
+            res.status(201).json({ messageId });
+        } catch (error) {
+            console.error("Error sending message:", error);
+            res.status(500).json({ message: "Error sending message" });
+        }
+    });
 
 
 };

@@ -35,6 +35,21 @@ db.serialize(() => {
             FOREIGN KEY (contact_username) REFERENCES users (username)
         )`
     );
+    db.run(`
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_username TEXT NOT NULL,
+            recipient_username TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp TEXT NOT NULL
+        );
+    `, (err) => {
+        if (err) {
+            console.error("Error setting up database schema:", err);
+        } else {
+            console.log("Database schema set up successfully");
+        }
+    });
 });
 
 const addContact = (username, contactUsername) => {
@@ -52,7 +67,6 @@ const addContact = (username, contactUsername) => {
         );
     });
 };
-
 const getContactsPromise = (username) => {
     return new Promise((resolve, reject) => {
         const query = "SELECT contact_username FROM contacts WHERE username = ?";
@@ -69,10 +83,44 @@ const getContactsPromise = (username) => {
         });
     });
 };
-
+const getChatHistory = (username1, username2) => {
+    return new Promise((resolve, reject) => {
+        const query = `
+            SELECT * FROM messages
+            WHERE (sender_username = ? AND recipient_username = ?)
+            OR (sender_username = ? AND recipient_username = ?)
+            ORDER BY timestamp ASC;
+        `;
+        db.all(query, [username1, username2, username2, username1], (err, rows) => {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(rows);
+            }
+        });
+    });
+};
+const sendMessage = (senderUsername, recipientUsername, messageContent) => {
+    return new Promise((resolve, reject) => {
+        const timestamp = new Date().toISOString();
+        const query = `
+            INSERT INTO messages (sender_username, recipient_username, content, timestamp)
+            VALUES (?, ?, ?, ?);
+        `;
+        db.run(query, [senderUsername, recipientUsername, messageContent, timestamp], function (err) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(this.lastID);
+            }
+        });
+    });
+};
 
 module.exports = {
     db,
     addContact,
     getContactsPromise,
+    getChatHistory,
+    sendMessage,
 };

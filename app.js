@@ -7,7 +7,8 @@ const http = require("http");
 const server = http.createServer(app);
 const configureSocket = require("./socket");
 const db = require("./db");     //WARNING: Unused constant db
-const io = configureSocket(server, {    //WARNING: Unused constant io
+
+const { userSockets } = configureSocket(server, {
     cors: {
         origin: "*", // Replace with the actual origin (e.g. http://localhost:3000)
         methods: ["GET", "POST"],
@@ -20,7 +21,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 
 // Set up the routes
-setupRoutes(app);
+setupRoutes(app, userSockets);
 
 const PORT = process.env.PORT || 5001;
 server.listen(PORT, () => {
