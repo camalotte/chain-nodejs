@@ -215,29 +215,23 @@ const setupRoutes = (app, userSockets) => {
             // Insert the new message into the messages table
             const messageId = await sendMessage(currentUsername, contactUsername, messageContent);
 
+            // Prepare the message object
+            // const message = {
+            //     sender_username: currentUsername,
+            //     recipient_username: contactUsername,
+            //     content: messageContent,
+            //     timestamp: new Date().toISOString(),
+            // };
+
             // Emit a real-time event to notify the receiver about the new message
             if (userSockets[contactUsername]) {
-                userSockets[contactUsername].emit("new-message", {
+                userSockets[contactUsername].emit("message", {
                     messageId,
                     sender: currentUsername,
                     content: messageContent,
                     timestamp: new Date().toISOString(),
                 });
             }
-
-            // Prepare the message object
-            const message = {
-                sender_username: currentUsername,
-                recipient_username: contactUsername,
-                content: messageContent,
-                timestamp: new Date().toISOString(),
-            };
-
-            // Emit the message event to the recipient's socket
-            // const recipientSocket = userSockets[recipientUsername];
-            // if (recipientSocket) {
-            //     recipientSocket.emit("message", message);
-            // }
 
             // Return the message ID in the response
             res.status(201).json({ messageId });
