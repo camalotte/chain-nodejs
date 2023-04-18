@@ -57,7 +57,7 @@ const loginUser = async (username, password) => {
         });
     });
 };
-const setupRoutes = (app) => {
+const setupRoutes = (app, userSockets) => {
     app.post("/register", async (req, res) => {
         const {username, password} = req.body;
         if (!username || !password) {
@@ -205,13 +205,16 @@ const setupRoutes = (app) => {
         try {
             // Get the current user's username from the JWT payload
             const currentUsername = req.user.username;
+
             // Get the contact's username from the request params
-            const { contactUsername } = req.params;
+            const contactUsername = req.params.contactUsername;
+
             // Get the message content from the request body
-            const { messageContent } = req.body;
+            const messageContent = req.body.messageContent;
 
             // Insert the new message into the messages table
             const messageId = await sendMessage(currentUsername, contactUsername, messageContent);
+
             // Emit a real-time event to notify the receiver about the new message
             if (userSockets[contactUsername]) {
                 userSockets[contactUsername].emit("new-message", {
@@ -222,14 +225,26 @@ const setupRoutes = (app) => {
                 });
             }
 
+            // Prepare the message object
+            const message = {
+                sender_username: currentUsername,
+                recipient_username: contactUsername,
+                content: messageContent,
+                timestamp: new Date().toISOString(),
+            };
+
+            // Emit the message event to the recipient's socket
+            // const recipientSocket = userSockets[recipientUsername];
+            // if (recipientSocket) {
+            //     recipientSocket.emit("message", message);
+            // }
+
             // Return the message ID in the response
             res.status(201).json({ messageId });
         } catch (error) {
-            console.error("Error sending message:", error);
+            console.error("BE Error sending message:", error.message, error.stack);
             res.status(500).json({ message: "Error sending message" });
         }
     });
-
-
 };
 module.exports = setupRoutes;

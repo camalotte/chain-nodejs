@@ -17,6 +17,10 @@ const configureSocket = (server) => {
         // Add the socket to the userSockets mapping
         userSockets[username] = socket;
 
+        socket.on("message", (message) => {
+            console.log("New message received:", message);
+        });
+
         socket.on("disconnect", () => {
             console.log(`User disconnected: ${username} (socket ID: ${socket.id})`);
             // Remove the socket from the userSockets mapping

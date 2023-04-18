@@ -8,7 +8,7 @@ const server = http.createServer(app);
 const configureSocket = require("./socket");
 const db = require("./db");     //WARNING: Unused constant db
 
-const { userSockets } = configureSocket(server, {
+const { io, userSockets } = configureSocket(server, {
     cors: {
         origin: "*", // Replace with the actual origin (e.g. http://localhost:3000)
         methods: ["GET", "POST"],
