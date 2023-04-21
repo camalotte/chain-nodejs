@@ -7,12 +7,6 @@ const db = new sqlite3.Database(dbName, (err) => {
     console.log("Connected to the SQLite database.");
 });
 
-// const db = new sqlite3.Database("./users.db", (err) => {
-//     if (err) {
-//         console.error(err.message);
-//     }
-//     console.log("Connected to the SQLite database.");
-// });
 db.serialize(() => {
     db.run(
         `CREATE TABLE IF NOT EXISTS users (
@@ -100,6 +94,48 @@ const getChatHistory = (username1, username2) => {
         });
     });
 };
+
+// const sendMessage = (senderUsername, recipientUsername, messageContent) => {
+//     return new Promise(async (resolve, reject) => {
+//         const timestamp = new Date().toISOString();
+//
+//         try {
+//             await db.run("BEGIN");
+//
+//             // Check if the recipient has the sender in their contact list
+//             const contactExists = await db.get(
+//                 `SELECT 1 FROM contacts WHERE username = ? AND contact_username = ?`,
+//                 [recipientUsername, senderUsername]
+//             );
+//
+//             // If the sender is not in the recipient's contact list, insert a new contact
+//             if (!contactExists) {
+//                 await db.run(
+//                     `INSERT INTO contacts (username, contact_username) VALUES (?, ?)`,
+//                     [recipientUsername, senderUsername]
+//                 );
+//             }
+//
+//             const query = `
+//             INSERT INTO messages (sender_username, recipient_username, content, timestamp)
+//             VALUES (?, ?, ?, ?);
+//         `;
+//             db.run(query, [senderUsername, recipientUsername, messageContent, timestamp], function (err) {
+//                 if (err) {
+//                     reject(err);
+//                 } else {
+//                     resolve(this.lastID);
+//                 }
+//             });
+//
+//             await db.run("COMMIT");
+//         } catch (error) {
+//             await db.run("ROLLBACK");
+//             reject(error);
+//         }
+//     });
+// };
+
 const sendMessage = (senderUsername, recipientUsername, messageContent) => {
     return new Promise((resolve, reject) => {
         const timestamp = new Date().toISOString();

@@ -4,6 +4,8 @@ const { db } = require('./db');
 const { addContact, getContactsPromise } = require("./db");
 const { getChatHistory } = require("./db");
 const { sendMessage } = require("./db");
+const contactsCache = new Map();
+
 
 const jwtSecret = "secret-key"; // Change this to a more secure key
 const searchUsers = (query) => {
@@ -136,7 +138,6 @@ const setupRoutes = (app, userSockets) => {
     app.post("/add-contact", authenticateJWT, async (req, res) => {
         // Get the current user's username from the JWT payload
         const currentUsername = req.user.username;
-
         // Get the contact's username from the request body
         const contactUsername = req.body.contactUsername;
 
@@ -205,23 +206,20 @@ const setupRoutes = (app, userSockets) => {
         try {
             // Get the current user's username from the JWT payload
             const currentUsername = req.user.username;
-
             // Get the contact's username from the request params
             const contactUsername = req.params.contactUsername;
-
             // Get the message content from the request body
             const messageContent = req.body.messageContent;
 
+            // Check if the recipient has the sender in their contact list
+            const contacts = await getContactsPromise(contactUsername);
+            const isContact = contacts.some(contact => contact.contact_username === currentUsername);
+            // If the sender is not in the recipient's contact list, add them
+            if (!isContact) {
+                await addContact(contactUsername, currentUsername);
+            }
             // Insert the new message into the messages table
             const messageId = await sendMessage(currentUsername, contactUsername, messageContent);
-
-            // Prepare the message object
-            // const message = {
-            //     sender_username: currentUsername,
-            //     recipient_username: contactUsername,
-            //     content: messageContent,
-            //     timestamp: new Date().toISOString(),
-            // };
 
             // Emit a real-time event to notify the receiver about the new message
             if (userSockets[contactUsername]) {
@@ -231,6 +229,16 @@ const setupRoutes = (app, userSockets) => {
                     content: messageContent,
                     timestamp: new Date().toISOString(),
                 });
+        }
+
+            if (!isContact) {
+                await addContact(contactUsername, currentUsername);
+                // Emit a real-time event to notify the recipient about the new contact
+                if (userSockets[contactUsername]) {
+                    userSockets[contactUsername].emit("new-contact", {
+                        contact_username: currentUsername,
+                    });
+                }
             }
 
             // Return the message ID in the response
