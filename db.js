@@ -46,21 +46,53 @@ db.serialize(() => {
     });
 });
 
+// const addContact = (username, contactUsername) => {
+//     return new Promise((resolve, reject) => {
+//         db.run(
+//             "INSERT INTO contacts (username, contact_username) VALUES (?, ?)",
+//             [username, contactUsername],
+//             (err) => {
+//                 if (err) {
+//                     reject(err);
+//                 } else {
+//                     resolve();
+//                 }
+//             }
+//         );
+//     });
+// };
+
 const addContact = (username, contactUsername) => {
     return new Promise((resolve, reject) => {
-        db.run(
-            "INSERT INTO contacts (username, contact_username) VALUES (?, ?)",
+        // Check if the contact already exists in the database
+        db.get(
+            "SELECT * FROM contacts WHERE username = ? AND contact_username = ?",
             [username, contactUsername],
-            (err) => {
+            (err, row) => {
                 if (err) {
                     reject(err);
-                } else {
+                } else if (row) {
+                    // If the contact is already in the database, do nothing and resolve the promise
                     resolve();
+                } else {
+                    // If the contact is not in the database, insert a new record
+                    db.run(
+                        "INSERT INTO contacts (username, contact_username) VALUES (?, ?)",
+                        [username, contactUsername],
+                        (err) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve();
+                            }
+                        }
+                    );
                 }
             }
         );
     });
 };
+
 const getContactsPromise = (username) => {
     return new Promise((resolve, reject) => {
         const query = "SELECT contact_username FROM contacts WHERE username = ?";
@@ -94,47 +126,6 @@ const getChatHistory = (username1, username2) => {
         });
     });
 };
-
-// const sendMessage = (senderUsername, recipientUsername, messageContent) => {
-//     return new Promise(async (resolve, reject) => {
-//         const timestamp = new Date().toISOString();
-//
-//         try {
-//             await db.run("BEGIN");
-//
-//             // Check if the recipient has the sender in their contact list
-//             const contactExists = await db.get(
-//                 `SELECT 1 FROM contacts WHERE username = ? AND contact_username = ?`,
-//                 [recipientUsername, senderUsername]
-//             );
-//
-//             // If the sender is not in the recipient's contact list, insert a new contact
-//             if (!contactExists) {
-//                 await db.run(
-//                     `INSERT INTO contacts (username, contact_username) VALUES (?, ?)`,
-//                     [recipientUsername, senderUsername]
-//                 );
-//             }
-//
-//             const query = `
-//             INSERT INTO messages (sender_username, recipient_username, content, timestamp)
-//             VALUES (?, ?, ?, ?);
-//         `;
-//             db.run(query, [senderUsername, recipientUsername, messageContent, timestamp], function (err) {
-//                 if (err) {
-//                     reject(err);
-//                 } else {
-//                     resolve(this.lastID);
-//                 }
-//             });
-//
-//             await db.run("COMMIT");
-//         } catch (error) {
-//             await db.run("ROLLBACK");
-//             reject(error);
-//         }
-//     });
-// };
 
 const sendMessage = (senderUsername, recipientUsername, messageContent) => {
     return new Promise((resolve, reject) => {
